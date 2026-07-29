@@ -242,3 +242,85 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
 
 renderTeams();
 </script>
+// Load any previously saved custom images from local browser memory
+const customImages = JSON.parse(localStorage.getItem('pl_team_badges')) || {};
+
+function triggerFileUpload(teamId) {
+  document.getElementById(`file-${teamId}`).click();
+}
+
+function handleFileSelect(event, teamId) {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      // Save the image data string to local memory
+      customImages[teamId] = e.target.result;
+      localStorage.setItem('pl_team_badges', JSON.stringify(customImages));
+      
+      // Re-render the cards with the new badge
+      renderTeams(document.getElementById("searchInput").value);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function renderTeams(filterText = "") {
+  const grid = document.getElementById("teamsGrid");
+  const countEl = document.getElementById("teamCount");
+  
+  const filtered = teams.filter(team => {
+    const query = filterText.toLowerCase();
+    return (
+      team.name.toLowerCase().includes(query) ||
+      team.manager.toLowerCase().includes(query) ||
+      team.stadium.toLowerCase().includes(query) ||
+      team.bestPlayer.toLowerCase().includes(query) ||
+      team.captain.toLowerCase().includes(query)
+    );
+  });
+
+  countEl.textContent = filtered.length;
+
+  grid.innerHTML = filtered.map(team => {
+    const imageSource = customImages[team.id] || team.logo;
+    const bgStyle = imageSource 
+      ? `background-image: url('${imageSource}');` 
+      : `background-color: ${team.colors.bg}; color: ${team.colors.text};`;
+
+    return `
+    <article class="team-card">
+      <div class="card-header">
+        <input type="file" id="file-${team.id}" class="file-input" accept="image/*" onchange="handleFileSelect(event, '${team.id}')" />
+        <div class="badge-wrapper" onclick="triggerFileUpload('${team.id}')" title="Click to upload/change logo" style="${bgStyle} border: 3px solid ${team.colors.secondary}">
+          ${!imageSource ? `<span class="badge-hint">UPLOAD<br/>BADGE</span>` : ''}
+        </div>
+        <h2 class="team-name">${team.name}</h2>
+      </div>
+      <div class="card-body">
+        <div class="info-row">
+          <span class="info-label">Manager</span>
+          <span class="info-value">${team.manager}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Stadium</span>
+          <span class="info-value">${team.stadium}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label"><span class="highlight-star">★</span> Best Player</span>
+          <span class="info-value">${team.bestPlayer}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Captain</span>
+          <span class="info-value">${team.captain}</span>
+        </div>
+      </div>
+    </article>
+  `}).join("");
+}
+
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  renderTeams(e.target.value);
+});
+
+renderTeams();
